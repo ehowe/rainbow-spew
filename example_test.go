@@ -19,7 +19,7 @@ package spew_test
 import (
 	"fmt"
 
-	"github.com/ehowe/rainbow-spew"
+	spew "github.com/ehowe/rainbow-spew"
 )
 
 type Flag int
@@ -205,8 +205,8 @@ func ExampleConfigState_Printf() {
 
 	// Create two ConfigState instances and modify the method handling of the
 	// first ConfigState only.
-	scs := spew.NewDefaultConfig()
-	scs2 := spew.NewDefaultConfig()
+	scs := spew.NewTestConfig()
+	scs2 := spew.NewTestConfig()
 	scs.DisableMethods = true
 
 	// Alternatively

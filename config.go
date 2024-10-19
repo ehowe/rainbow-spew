@@ -21,7 +21,20 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/fatih/color"
 )
+
+// ColorConfiguration is an object that defines the ANSI colors to output.
+// Valid values for the keys are slices of from the github.com/fatih/color
+// package that is a color.Attribute
+type ColorConfiguration struct {
+	String []color.Attribute
+	Number []color.Attribute
+	Bool   []color.Attribute
+	Type   []color.Attribute
+	Length []color.Attribute
+}
 
 // ConfigState houses the configuration options used by spew to format and
 // display values.  There is a global instance, Config, that is used to control
@@ -98,11 +111,23 @@ type ConfigState struct {
 	// be spewed to strings and sorted by those strings.  This is only
 	// considered if SortKeys is true.
 	SpewKeys bool
+
+	// Color is a ColorConfiguration object that defines the ANSI colors to output.
+	Color ColorConfiguration
 }
 
 // Config is the active configuration of the top-level functions.
 // The configuration can be changed by modifying the contents of spew.Config.
-var Config = ConfigState{Indent: " "}
+var Config = ConfigState{
+	Indent: "  ",
+	Color: ColorConfiguration{
+		String: []color.Attribute{color.FgRed},
+		Number: []color.Attribute{color.FgMagenta},
+		Bool:   []color.Attribute{color.FgYellow},
+		Type:   []color.Attribute{color.FgGreen, color.Underline},
+		Length: []color.Attribute{color.FgCyan},
+	},
+}
 
 // Errorf is a wrapper for fmt.Errorf that treats each argument as if it were
 // passed with a Formatter interface returned by c.NewFormatter.  It returns
@@ -254,15 +279,15 @@ pointer addresses used to indirect to the final value.  It provides the
 following features over the built-in printing facilities provided by the fmt
 package:
 
-	* Pointers are dereferenced and followed
-	* Circular data structures are detected and handled properly
-	* Custom Stringer/error interfaces are optionally invoked, including
-	  on unexported types
-	* Custom types which only implement the Stringer/error interfaces via
-	  a pointer receiver are optionally invoked when passing non-pointer
-	  variables
-	* Byte arrays and slices are dumped like the hexdump -C command which
-	  includes offsets, byte values in hex, and ASCII output
+  - Pointers are dereferenced and followed
+  - Circular data structures are detected and handled properly
+  - Custom Stringer/error interfaces are optionally invoked, including
+    on unexported types
+  - Custom types which only implement the Stringer/error interfaces via
+    a pointer receiver are optionally invoked when passing non-pointer
+    variables
+  - Byte arrays and slices are dumped like the hexdump -C command which
+    includes offsets, byte values in hex, and ASCII output
 
 The configuration options are controlled by modifying the public members
 of c.  See ConfigState for options documentation.
@@ -295,12 +320,35 @@ func (c *ConfigState) convertArgs(args []interface{}) (formatters []interface{})
 
 // NewDefaultConfig returns a ConfigState with the following default settings.
 //
-// 	Indent: " "
-// 	MaxDepth: 0
-// 	DisableMethods: false
-// 	DisablePointerMethods: false
-// 	ContinueOnMethod: false
-// 	SortKeys: false
+//	Indent: "  "
+//	MaxDepth: 0
+//	DisableMethods: false
+//	DisablePointerMethods: false
+//	ContinueOnMethod: false
+//	SortKeys: false
 func NewDefaultConfig() *ConfigState {
-	return &ConfigState{Indent: " "}
+	return &ConfigState{
+		Indent: "  ",
+		Color: ColorConfiguration{
+			String: []color.Attribute{color.FgRed},
+			Number: []color.Attribute{color.FgMagenta},
+			Bool:   []color.Attribute{color.FgYellow},
+			Type:   []color.Attribute{color.FgGreen, color.Underline},
+			Length: []color.Attribute{color.FgCyan},
+		},
+	}
+}
+
+// Create a config for tests that don't include color information
+func NewTestConfig() *ConfigState {
+	return &ConfigState{
+		Indent: "  ",
+		Color: ColorConfiguration{
+			String: []color.Attribute{},
+			Number: []color.Attribute{},
+			Bool:   []color.Attribute{},
+			Type:   []color.Attribute{},
+			Length: []color.Attribute{},
+		},
+	}
 }

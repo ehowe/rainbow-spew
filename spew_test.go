@@ -23,7 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ehowe/rainbow-spew"
+	spew "github.com/ehowe/rainbow-spew"
 )
 
 // spewFunc is used to identify which public function of the spew package or
@@ -125,7 +125,7 @@ func redirStdout(f func()) ([]byte, error) {
 
 func initSpewTests() {
 	// Config states with various settings.
-	scsDefault := spew.NewDefaultConfig()
+	scsDefault := spew.NewTestConfig()
 	scsNoMethods := &spew.ConfigState{Indent: " ", DisableMethods: true}
 	scsNoPmethods := &spew.ConfigState{Indent: " ", DisablePointerMethods: true}
 	scsMaxDepth := &spew.ConfigState{Indent: " ", MaxDepth: 1}

@@ -131,7 +131,7 @@ func (d *dumpState) dumpPtr(v reflect.Value) {
 	withParens(d, func(d *dumpState) {
 		// Display type information.
 		d.w.Write(bytes.Repeat(asteriskBytes, indirects))
-		printType(d.w, ve.Type().String())
+		printType(d.w, d.cs, ve.Type().String())
 	})
 
 	// Display pointer information.
@@ -273,7 +273,7 @@ func (d *dumpState) dump(v reflect.Value) {
 	if !d.ignoreNextType {
 		d.indent()
 		withParens(d, func(d *dumpState) {
-			printType(d.w, v.Type().String())
+			printType(d.w, d.cs, v.Type().String())
 		})
 		d.w.Write(spaceBytes)
 	}
@@ -291,14 +291,14 @@ func (d *dumpState) dump(v reflect.Value) {
 	if valueLen != 0 || !d.cs.DisableCapacities && valueCap != 0 {
 		withParens(d, func(d *dumpState) {
 			if valueLen != 0 {
-				withColor(d.w, lenEqualsBytes, color.FgCyan)
-				printNumber(d.w, valueLen)
+				withColor(d.w, lenEqualsBytes, d.cs.Color.Length...)
+				printNumber(d.w, d.cs, valueLen)
 			}
 			if !d.cs.DisableCapacities && valueCap != 0 {
 				if valueLen != 0 {
 					d.w.Write(spaceBytes)
 				}
-				printNumber(d.w, valueCap)
+				printNumber(d.w, d.cs, valueCap)
 			}
 		})
 		d.w.Write(spaceBytes)
@@ -320,19 +320,19 @@ func (d *dumpState) dump(v reflect.Value) {
 		// been handled above.
 
 	case reflect.Bool:
-		printBool(d.w, v.Bool())
+		printBool(d.w, d.cs, v.Bool())
 
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
-		printNumber(d.w, v.Int())
+		printNumber(d.w, d.cs, v.Int())
 
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
-		printNumber(d.w, v.Uint())
+		printNumber(d.w, d.cs, v.Uint())
 
 	case reflect.Float32, reflect.Float64:
-		printNumber(d.w, v.Float())
+		printNumber(d.w, d.cs, v.Float())
 
 	case reflect.Complex64, reflect.Complex128:
-		printNumber(d.w, v.Complex())
+		printNumber(d.w, d.cs, v.Complex())
 
 	case reflect.Slice:
 		if v.IsNil() {
@@ -355,7 +355,7 @@ func (d *dumpState) dump(v reflect.Value) {
 		d.w.Write(closeBraceBytes)
 
 	case reflect.String:
-		printString(d.w, strconv.Quote(v.String()))
+		printString(d.w, d.cs, strconv.Quote(v.String()))
 
 	case reflect.Interface:
 		// The only time we should get here is for nil interfaces due to
@@ -477,20 +477,20 @@ func withColor(writer io.Writer, content []byte, colors ...color.Attribute) {
 	writer.Write([]byte(fn(string(content))))
 }
 
-func printNumber[T number](writer io.Writer, num T) {
-	withColor(writer, []byte(fmt.Sprintf("%v", num)), color.FgMagenta)
+func printNumber[T number](writer io.Writer, cs *ConfigState, num T) {
+	withColor(writer, []byte(fmt.Sprintf("%v", num)), cs.Color.Number...)
 }
 
-func printBool(writer io.Writer, val bool) {
-	withColor(writer, []byte(fmt.Sprintf("%t", val)), color.FgYellow)
+func printBool(writer io.Writer, cs *ConfigState, val bool) {
+	withColor(writer, []byte(fmt.Sprintf("%t", val)), cs.Color.Bool...)
 }
 
-func printType(writer io.Writer, val string) {
-	withColor(writer, []byte(val), color.FgGreen, color.Underline)
+func printType(writer io.Writer, cs *ConfigState, val string) {
+	withColor(writer, []byte(val), cs.Color.Type...)
 }
 
-func printString(writer io.Writer, val string) {
-	withColor(writer, []byte(val), color.FgRed)
+func printString(writer io.Writer, cs *ConfigState, val string) {
+	withColor(writer, []byte(val), cs.Color.String...)
 }
 
 // Fdump formats and displays the passed arguments to io.Writer w.  It formats

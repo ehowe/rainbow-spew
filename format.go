@@ -236,19 +236,19 @@ func (f *formatState) format(v reflect.Value) {
 		// been handled above.
 
 	case reflect.Bool:
-		printBool(f.fs, v.Bool())
+		printBool(f.fs, f.cs, v.Bool())
 
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
-		printNumber(f.fs, v.Int())
+		printNumber(f.fs, f.cs, v.Int())
 
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
-		printNumber(f.fs, v.Uint())
+		printNumber(f.fs, f.cs, v.Uint())
 
 	case reflect.Float32, reflect.Float64:
-		printNumber(f.fs, v.Float())
+		printNumber(f.fs, f.cs, v.Float())
 
 	case reflect.Complex64, reflect.Complex128:
-		printNumber(f.fs, v.Complex())
+		printNumber(f.fs, f.cs, v.Complex())
 
 	case reflect.Slice:
 		if v.IsNil() {
