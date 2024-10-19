@@ -26,6 +26,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 var (
@@ -77,6 +79,10 @@ func (d *dumpState) unpackValue(v reflect.Value) reflect.Value {
 	return v
 }
 
+type number interface {
+	int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | float32 | float64 | complex64 | complex128
+}
+
 // dumpPtr handles formatting of pointers by indirecting them as necessary.
 func (d *dumpState) dumpPtr(v reflect.Value) {
 	// Remove pointers at or below the current depth from map used to detect
@@ -122,38 +128,38 @@ func (d *dumpState) dumpPtr(v reflect.Value) {
 		}
 	}
 
-	// Display type information.
-	d.w.Write(openParenBytes)
-	d.w.Write(bytes.Repeat(asteriskBytes, indirects))
-	d.w.Write([]byte(ve.Type().String()))
-	d.w.Write(closeParenBytes)
+	withParens(d, func(d *dumpState) {
+		// Display type information.
+		d.w.Write(bytes.Repeat(asteriskBytes, indirects))
+		printType(d.w, ve.Type().String())
+	})
 
 	// Display pointer information.
 	if !d.cs.DisablePointerAddresses && len(pointerChain) > 0 {
-		d.w.Write(openParenBytes)
-		for i, addr := range pointerChain {
-			if i > 0 {
-				d.w.Write(pointerChainBytes)
+		withParens(d, func(d *dumpState) {
+			for i, addr := range pointerChain {
+				if i > 0 {
+					d.w.Write(pointerChainBytes)
+				}
+				printHexPtr(d.w, addr)
 			}
-			printHexPtr(d.w, addr)
-		}
-		d.w.Write(closeParenBytes)
+		})
 	}
 
 	// Display dereferenced value.
-	d.w.Write(openParenBytes)
-	switch {
-	case nilFound:
-		d.w.Write(nilAngleBytes)
+	withParens(d, func(d *dumpState) {
+		switch {
+		case nilFound:
+			d.w.Write(nilAngleBytes)
 
-	case cycleFound:
-		d.w.Write(circularBytes)
+		case cycleFound:
+			d.w.Write(circularBytes)
 
-	default:
-		d.ignoreNextType = true
-		d.dump(ve)
-	}
-	d.w.Write(closeParenBytes)
+		default:
+			d.ignoreNextType = true
+			d.dump(ve)
+		}
+	})
 }
 
 // dumpSlice handles formatting of arrays and slices.  Byte (uint8 under
@@ -266,9 +272,9 @@ func (d *dumpState) dump(v reflect.Value) {
 	// Print type information unless already handled elsewhere.
 	if !d.ignoreNextType {
 		d.indent()
-		d.w.Write(openParenBytes)
-		d.w.Write([]byte(v.Type().String()))
-		d.w.Write(closeParenBytes)
+		withParens(d, func(d *dumpState) {
+			printType(d.w, v.Type().String())
+		})
 		d.w.Write(spaceBytes)
 	}
 	d.ignoreNextType = false
@@ -283,19 +289,18 @@ func (d *dumpState) dump(v reflect.Value) {
 		valueLen = v.Len()
 	}
 	if valueLen != 0 || !d.cs.DisableCapacities && valueCap != 0 {
-		d.w.Write(openParenBytes)
-		if valueLen != 0 {
-			d.w.Write(lenEqualsBytes)
-			printInt(d.w, int64(valueLen), 10)
-		}
-		if !d.cs.DisableCapacities && valueCap != 0 {
+		withParens(d, func(d *dumpState) {
 			if valueLen != 0 {
-				d.w.Write(spaceBytes)
+				withColor(d.w, lenEqualsBytes, color.FgCyan)
+				printNumber(d.w, valueLen)
 			}
-			d.w.Write(capEqualsBytes)
-			printInt(d.w, int64(valueCap), 10)
-		}
-		d.w.Write(closeParenBytes)
+			if !d.cs.DisableCapacities && valueCap != 0 {
+				if valueLen != 0 {
+					d.w.Write(spaceBytes)
+				}
+				printNumber(d.w, valueCap)
+			}
+		})
 		d.w.Write(spaceBytes)
 	}
 
@@ -318,22 +323,16 @@ func (d *dumpState) dump(v reflect.Value) {
 		printBool(d.w, v.Bool())
 
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
-		printInt(d.w, v.Int(), 10)
+		printNumber(d.w, v.Int())
 
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
-		printUint(d.w, v.Uint(), 10)
+		printNumber(d.w, v.Uint())
 
-	case reflect.Float32:
-		printFloat(d.w, v.Float(), 32)
+	case reflect.Float32, reflect.Float64:
+		printNumber(d.w, v.Float())
 
-	case reflect.Float64:
-		printFloat(d.w, v.Float(), 64)
-
-	case reflect.Complex64:
-		printComplex(d.w, v.Complex(), 32)
-
-	case reflect.Complex128:
-		printComplex(d.w, v.Complex(), 64)
+	case reflect.Complex64, reflect.Complex128:
+		printNumber(d.w, v.Complex())
 
 	case reflect.Slice:
 		if v.IsNil() {
@@ -356,7 +355,7 @@ func (d *dumpState) dump(v reflect.Value) {
 		d.w.Write(closeBraceBytes)
 
 	case reflect.String:
-		d.w.Write([]byte(strconv.Quote(v.String())))
+		printString(d.w, strconv.Quote(v.String()))
 
 	case reflect.Interface:
 		// The only time we should get here is for nil interfaces due to
@@ -467,6 +466,33 @@ func fdump(cs *ConfigState, w io.Writer, a ...interface{}) {
 	}
 }
 
+func withParens(d *dumpState, contentFunc func(d *dumpState)) {
+	d.w.Write(openParenBytes)
+	contentFunc(d)
+	d.w.Write(closeParenBytes)
+}
+
+func withColor(writer io.Writer, content []byte, colors ...color.Attribute) {
+	fn := color.New(colors...).SprintfFunc()
+	writer.Write([]byte(fn(string(content))))
+}
+
+func printNumber[T number](writer io.Writer, num T) {
+	withColor(writer, []byte(fmt.Sprintf("%v", num)), color.FgMagenta)
+}
+
+func printBool(writer io.Writer, val bool) {
+	withColor(writer, []byte(fmt.Sprintf("%t", val)), color.FgYellow)
+}
+
+func printType(writer io.Writer, val string) {
+	withColor(writer, []byte(val), color.FgGreen, color.Underline)
+}
+
+func printString(writer io.Writer, val string) {
+	withColor(writer, []byte(val), color.FgRed)
+}
+
 // Fdump formats and displays the passed arguments to io.Writer w.  It formats
 // exactly the same as Dump.
 func Fdump(w io.Writer, a ...interface{}) {
@@ -488,15 +514,15 @@ pointer addresses used to indirect to the final value.  It provides the
 following features over the built-in printing facilities provided by the fmt
 package:
 
-	* Pointers are dereferenced and followed
-	* Circular data structures are detected and handled properly
-	* Custom Stringer/error interfaces are optionally invoked, including
-	  on unexported types
-	* Custom types which only implement the Stringer/error interfaces via
-	  a pointer receiver are optionally invoked when passing non-pointer
-	  variables
-	* Byte arrays and slices are dumped like the hexdump -C command which
-	  includes offsets, byte values in hex, and ASCII output
+  - Pointers are dereferenced and followed
+  - Circular data structures are detected and handled properly
+  - Custom Stringer/error interfaces are optionally invoked, including
+    on unexported types
+  - Custom types which only implement the Stringer/error interfaces via
+    a pointer receiver are optionally invoked when passing non-pointer
+    variables
+  - Byte arrays and slices are dumped like the hexdump -C command which
+    includes offsets, byte values in hex, and ASCII output
 
 The configuration options are controlled by an exported package global,
 spew.Config.  See ConfigState for options documentation.

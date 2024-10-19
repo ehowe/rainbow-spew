@@ -1,14 +1,9 @@
-go-spew
-=======
+# rainbow-spew
 
-[![Build Status](https://img.shields.io/travis/davecgh/go-spew.svg)](https://travis-ci.org/davecgh/go-spew)
-[![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![Coverage Status](https://img.shields.io/coveralls/davecgh/go-spew.svg)](https://coveralls.io/r/davecgh/go-spew?branch=master)
-
-Go-spew implements a deep pretty printer for Go data structures to aid in
-debugging.  A comprehensive suite of tests with 100% test coverage is provided
-to ensure proper functionality.  See `test_coverage.txt` for the gocov coverage
-report.  Go-spew is licensed under the liberal ISC license, so it may be used in
+Rainbow-spew is a fork of https://github.com/davecgh/go-spew with implements a colorized pretty printer for Go data structures to aid in
+debugging. A comprehensive suite of tests with 100% test coverage is provided
+to ensure proper functionality. See `test_coverage.txt` for the gocov coverage
+report. Rainbow-spew is licensed under the liberal ISC license, so it may be used in
 open source or commercial projects.
 
 If you're interested in reading about how this package came to life and some
@@ -18,20 +13,20 @@ post about it
 
 ## Documentation
 
-[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/davecgh/go-spew/spew)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/ehowe/rainbow-spew)
 
 Full `go doc` style documentation for the project can be viewed online without
 installing this package by using the excellent GoDoc site here:
-http://godoc.org/github.com/davecgh/go-spew/spew
+http://godoc.org/github.com/ehowe/rainbow-spew
 
 You can also view the documentation locally once the package is installed with
 the `godoc` tool by running `godoc -http=":6060"` and pointing your browser to
-http://localhost:6060/pkg/github.com/davecgh/go-spew/spew
+http://localhost:6060/pkg/github.com/ehowe/rainbow-spew
 
 ## Installation
 
 ```bash
-$ go get -u github.com/davecgh/go-spew/spew
+$ go get -u github.com/ehowe/rainbow-spew
 ```
 
 ## Quick Start
@@ -39,7 +34,7 @@ $ go get -u github.com/davecgh/go-spew/spew
 Add this import line to the file you're working in:
 
 ```Go
-import "github.com/davecgh/go-spew/spew"
+import "github.com/ehowe/rainbow-spew"
 ```
 
 To dump a variable with full newlines, indentation, type, and pointer
@@ -54,7 +49,7 @@ str := spew.Sdump(myVar1, myVar2, ...)
 Alternatively, if you would prefer to use format strings with a compacted inline
 printing style, use the convenience wrappers Printf, Fprintf, etc with %v (most
 compact), %+v (adds pointer addresses), %#v (adds types), or %#+v (adds types
-and pointer addresses): 
+and pointer addresses):
 
 ```Go
 spew.Printf("myVar1: %v -- myVar2: %+v", myVar1, myVar2)
@@ -75,7 +70,7 @@ import (
     "html"
     "net/http"
 
-    "github.com/davecgh/go-spew/spew"
+    "github.com/ehowe/rainbow-spew"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +107,7 @@ func main() {
 ## Sample Formatter Output
 
 Double pointer to a uint8:
+
 ```
 	  %v: <**>5
 	 %+v: <**>(0xf8400420d0->0xf8400420c8)5
@@ -120,6 +116,7 @@ Double pointer to a uint8:
 ```
 
 Pointer to circular struct with a uint8 field and a pointer to itself:
+
 ```
 	  %v: <*>{1 <*><shown>}
 	 %+v: <*>(0xf84003e260){ui8:1 c:<*>(0xf84003e260)<shown>}
@@ -191,11 +188,15 @@ options. See the ConfigState documentation for more details.
 
 This package relies on the unsafe package to perform some of the more advanced
 features, however it also supports a "limited" mode which allows it to work in
-environments where the unsafe package is not available.  By default, it will
-operate in this mode on Google App Engine and when compiled with GopherJS.  The
+environments where the unsafe package is not available. By default, it will
+operate in this mode on Google App Engine and when compiled with GopherJS. The
 "safe" build tag may also be specified to force the package to build without
 using the unsafe package.
 
 ## License
 
-Go-spew is licensed under the [copyfree](http://copyfree.org) ISC License.
+Rainbow-spew is licensed under the [copyfree](http://copyfree.org) ISC License.
+
+## Todo
+
+When adding the colorized output, it correctly broke all of the tests

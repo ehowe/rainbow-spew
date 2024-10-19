@@ -28,7 +28,7 @@ import (
 // Some constants in the form of bytes to avoid string overhead.  This mirrors
 // the technique used in the fmt package.
 var (
-	panicBytes            = []byte("(PANIC=")
+	panicBytes            = []byte("(PANIC: ")
 	plusBytes             = []byte("+")
 	iBytes                = []byte("i")
 	trueBytes             = []byte("true")
@@ -60,8 +60,8 @@ var (
 	closeAngleBytes       = []byte(">")
 	openMapBytes          = []byte("map[")
 	closeMapBytes         = []byte("]")
-	lenEqualsBytes        = []byte("len=")
-	capEqualsBytes        = []byte("cap=")
+	lenEqualsBytes        = []byte(fmt.Sprintf("len%s", colonSpaceBytes))
+	capEqualsBytes        = []byte(fmt.Sprintf("cap%s", colonSpaceBytes))
 )
 
 // hexDigits is used to map a decimal value to a hex digit.
@@ -138,31 +138,6 @@ func handleMethods(cs *ConfigState, w io.Writer, v reflect.Value) (handled bool)
 		return true
 	}
 	return false
-}
-
-// printBool outputs a boolean value as true or false to Writer w.
-func printBool(w io.Writer, val bool) {
-	if val {
-		w.Write(trueBytes)
-	} else {
-		w.Write(falseBytes)
-	}
-}
-
-// printInt outputs a signed integer value to Writer w.
-func printInt(w io.Writer, val int64, base int) {
-	w.Write([]byte(strconv.FormatInt(val, base)))
-}
-
-// printUint outputs an unsigned integer value to Writer w.
-func printUint(w io.Writer, val uint64, base int) {
-	w.Write([]byte(strconv.FormatUint(val, base)))
-}
-
-// printFloat outputs a floating point value using the specified precision,
-// which is expected to be 32 or 64bit, to Writer w.
-func printFloat(w io.Writer, val float64, precision int) {
-	w.Write([]byte(strconv.FormatFloat(val, 'g', -1, precision)))
 }
 
 // printComplex outputs a complex value using the specified float precision
