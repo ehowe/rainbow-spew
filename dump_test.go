@@ -64,10 +64,14 @@ package spew_test
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 	"unsafe"
 
-	"github.com/ehowe/rainbow-spew"
+	spew "github.com/ehowe/rainbow-spew"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/samber/lo"
 )
 
 // dumpTest is used to describe a test to be performed against the Dump method.
@@ -312,7 +316,7 @@ func addArrayDumpTests() {
 	vAddr := fmt.Sprintf("%p", pv)
 	pvAddr := fmt.Sprintf("%p", &pv)
 	vt := "int"
-	vs := "(len=" + vLen + " cap=" + vCap + ") {\n (" + vt + ") 1,\n (" +
+	vs := "(len: " + vLen + " cap: " + vCap + ") {\n (" + vt + ") 1,\n (" +
 		vt + ") 2,\n (" + vt + ") 3\n}"
 	addDumpTest(v, "([3]"+vt+") "+vs+"\n")
 	addDumpTest(pv, "(*[3]"+vt+")("+vAddr+")("+vs+")\n")
@@ -334,15 +338,15 @@ func addArrayDumpTests() {
 	v2Addr := fmt.Sprintf("%p", pv2)
 	pv2Addr := fmt.Sprintf("%p", &pv2)
 	v2t := "spew_test.pstringer"
-	v2sp := "(len=" + v2Len + " cap=" + v2Cap + ") {\n (" + v2t +
-		") (len=" + v2i0Len + ") stringer 1,\n (" + v2t +
-		") (len=" + v2i1Len + ") stringer 2,\n (" + v2t +
-		") (len=" + v2i2Len + ") " + "stringer 3\n}"
+	v2sp := "(len: " + v2Len + " cap: " + v2Cap + ") {\n (" + v2t +
+		") (len: " + v2i0Len + ") stringer 1,\n (" + v2t +
+		") (len: " + v2i1Len + ") stringer 2,\n (" + v2t +
+		") (len: " + v2i2Len + ") " + "stringer 3\n}"
 	v2s := v2sp
 	if spew.UnsafeDisabled {
-		v2s = "(len=" + v2Len + " cap=" + v2Cap + ") {\n (" + v2t +
-			") (len=" + v2i0Len + ") \"1\",\n (" + v2t + ") (len=" +
-			v2i1Len + ") \"2\",\n (" + v2t + ") (len=" + v2i2Len +
+		v2s = "(len: " + v2Len + " cap: " + v2Cap + ") {\n (" + v2t +
+			") (len: " + v2i0Len + ") \"1\",\n (" + v2t + ") (len: " +
+			v2i1Len + ") \"2\",\n (" + v2t + ") (len: " + v2i2Len +
 			") " + "\"3\"\n}"
 	}
 	addDumpTest(v2, "([3]"+v2t+") "+v2s+"\n")
@@ -364,8 +368,8 @@ func addArrayDumpTests() {
 	v3t2 := "string"
 	v3t3 := "int"
 	v3t4 := "uint"
-	v3s := "(len=" + v3Len + " cap=" + v3Cap + ") {\n (" + v3t2 + ") " +
-		"(len=" + v3i0Len + ") \"one\",\n (" + v3t3 + ") 2,\n (" +
+	v3s := "(len: " + v3Len + " cap: " + v3Cap + ") {\n (" + v3t2 + ") " +
+		"(len: " + v3i0Len + ") \"one\",\n (" + v3t3 + ") 2,\n (" +
 		v3t4 + ") 3\n}"
 	addDumpTest(v3, "("+v3t+") "+v3s+"\n")
 	addDumpTest(pv3, "(*"+v3t+")("+v3Addr+")("+v3s+")\n")
@@ -387,7 +391,7 @@ func addArrayDumpTests() {
 	v4Addr := fmt.Sprintf("%p", pv4)
 	pv4Addr := fmt.Sprintf("%p", &pv4)
 	v4t := "[34]uint8"
-	v4s := "(len=" + v4Len + " cap=" + v4Cap + ") " +
+	v4s := "(len: " + v4Len + " cap: " + v4Cap + ") " +
 		"{\n 00000000  11 12 13 14 15 16 17 18  19 1a 1b 1c 1d 1e 1f 20" +
 		"  |............... |\n" +
 		" 00000010  21 22 23 24 25 26 27 28  29 2a 2b 2c 2d 2e 2f 30" +
@@ -410,7 +414,7 @@ func addSliceDumpTests() {
 	vAddr := fmt.Sprintf("%p", pv)
 	pvAddr := fmt.Sprintf("%p", &pv)
 	vt := "float32"
-	vs := "(len=" + vLen + " cap=" + vCap + ") {\n (" + vt + ") 3.14,\n (" +
+	vs := "(len: " + vLen + " cap: " + vCap + ") {\n (" + vt + ") 3.14,\n (" +
 		vt + ") 6.28,\n (" + vt + ") 12.56\n}"
 	addDumpTest(v, "([]"+vt+") "+vs+"\n")
 	addDumpTest(pv, "(*[]"+vt+")("+vAddr+")("+vs+")\n")
@@ -432,9 +436,9 @@ func addSliceDumpTests() {
 	v2Addr := fmt.Sprintf("%p", pv2)
 	pv2Addr := fmt.Sprintf("%p", &pv2)
 	v2t := "spew_test.pstringer"
-	v2s := "(len=" + v2Len + " cap=" + v2Cap + ") {\n (" + v2t + ") (len=" +
-		v2i0Len + ") stringer 1,\n (" + v2t + ") (len=" + v2i1Len +
-		") stringer 2,\n (" + v2t + ") (len=" + v2i2Len + ") " +
+	v2s := "(len: " + v2Len + " cap: " + v2Cap + ") {\n (" + v2t + ") (len: " +
+		v2i0Len + ") stringer 1,\n (" + v2t + ") (len: " + v2i1Len +
+		") stringer 2,\n (" + v2t + ") (len: " + v2i2Len + ") " +
 		"stringer 3\n}"
 	addDumpTest(v2, "([]"+v2t+") "+v2s+"\n")
 	addDumpTest(pv2, "(*[]"+v2t+")("+v2Addr+")("+v2s+")\n")
@@ -456,8 +460,8 @@ func addSliceDumpTests() {
 	v3t3 := "int"
 	v3t4 := "uint"
 	v3t5 := "interface {}"
-	v3s := "(len=" + v3Len + " cap=" + v3Cap + ") {\n (" + v3t2 + ") " +
-		"(len=" + v3i0Len + ") \"one\",\n (" + v3t3 + ") 2,\n (" +
+	v3s := "(len: " + v3Len + " cap: " + v3Cap + ") {\n (" + v3t2 + ") " +
+		"(len: " + v3i0Len + ") \"one\",\n (" + v3t3 + ") 2,\n (" +
 		v3t4 + ") 3,\n (" + v3t5 + ") <nil>\n}"
 	addDumpTest(v3, "("+v3t+") "+v3s+"\n")
 	addDumpTest(pv3, "(*"+v3t+")("+v3Addr+")("+v3s+")\n")
@@ -479,7 +483,7 @@ func addSliceDumpTests() {
 	v4Addr := fmt.Sprintf("%p", pv4)
 	pv4Addr := fmt.Sprintf("%p", &pv4)
 	v4t := "[]uint8"
-	v4s := "(len=" + v4Len + " cap=" + v4Cap + ") " +
+	v4s := "(len: " + v4Len + " cap: " + v4Cap + ") " +
 		"{\n 00000000  11 12 13 14 15 16 17 18  19 1a 1b 1c 1d 1e 1f 20" +
 		"  |............... |\n" +
 		" 00000010  21 22 23 24 25 26 27 28  29 2a 2b 2c 2d 2e 2f 30" +
@@ -514,7 +518,7 @@ func addStringDumpTests() {
 	vAddr := fmt.Sprintf("%p", pv)
 	pvAddr := fmt.Sprintf("%p", &pv)
 	vt := "string"
-	vs := "(len=" + vLen + ") \"test\""
+	vs := "(len: " + vLen + ") \"test\""
 	addDumpTest(v, "("+vt+") "+vs+"\n")
 	addDumpTest(pv, "(*"+vt+")("+vAddr+")("+vs+")\n")
 	addDumpTest(&pv, "(**"+vt+")("+pvAddr+"->"+vAddr+")("+vs+")\n")
@@ -563,11 +567,11 @@ func addMapDumpTests() {
 	mt := "map[string]int"
 	mt1 := "string"
 	mt2 := "int"
-	ms := "(len=" + mLen + ") {\n (" + mt1 + ") (len=" + klen + ") " +
-		"\"one\": (" + mt2 + ") 1,\n (" + mt1 + ") (len=" + kkLen +
+	ms := "(len: " + mLen + ") {\n (" + mt1 + ") (len: " + klen + ") " +
+		"\"one\": (" + mt2 + ") 1,\n (" + mt1 + ") (len: " + kkLen +
 		") \"two\": (" + mt2 + ") 2\n}"
-	ms2 := "(len=" + mLen + ") {\n (" + mt1 + ") (len=" + kkLen + ") " +
-		"\"two\": (" + mt2 + ") 2,\n (" + mt1 + ") (len=" + klen +
+	ms2 := "(len: " + mLen + ") {\n (" + mt1 + ") (len: " + kkLen + ") " +
+		"\"two\": (" + mt2 + ") 2,\n (" + mt1 + ") (len: " + klen +
 		") \"one\": (" + mt2 + ") 1\n}"
 	addDumpTest(m, "("+mt+") "+ms+"\n", "("+mt+") "+ms2+"\n")
 	addDumpTest(pm, "(*"+mt+")("+mAddr+")("+ms+")\n",
@@ -592,11 +596,11 @@ func addMapDumpTests() {
 	m2t := "map[spew_test.pstringer]spew_test.pstringer"
 	m2t1 := "spew_test.pstringer"
 	m2t2 := "spew_test.pstringer"
-	m2s := "(len=" + m2Len + ") {\n (" + m2t1 + ") (len=" + k2Len + ") " +
-		"stringer one: (" + m2t2 + ") (len=" + v2Len + ") stringer 1\n}"
+	m2s := "(len: " + m2Len + ") {\n (" + m2t1 + ") (len: " + k2Len + ") " +
+		"stringer one: (" + m2t2 + ") (len: " + v2Len + ") stringer 1\n}"
 	if spew.UnsafeDisabled {
-		m2s = "(len=" + m2Len + ") {\n (" + m2t1 + ") (len=" + k2Len +
-			") " + "\"one\": (" + m2t2 + ") (len=" + v2Len +
+		m2s = "(len: " + m2Len + ") {\n (" + m2t1 + ") (len: " + k2Len +
+			") " + "\"one\": (" + m2t2 + ") (len: " + v2Len +
 			") \"1\"\n}"
 	}
 	addDumpTest(m2, "("+m2t+") "+m2s+"\n")
@@ -618,7 +622,7 @@ func addMapDumpTests() {
 	m3t := "map[interface {}]interface {}"
 	m3t1 := "string"
 	m3t2 := "int"
-	m3s := "(len=" + m3Len + ") {\n (" + m3t1 + ") (len=" + k3Len + ") " +
+	m3s := "(len: " + m3Len + ") {\n (" + m3t1 + ") (len: " + k3Len + ") " +
 		"\"one\": (" + m3t2 + ") 1\n}"
 	addDumpTest(m3, "("+m3t+") "+m3s+"\n")
 	addDumpTest(pm3, "(*"+m3t+")("+m3Addr+")("+m3s+")\n")
@@ -639,7 +643,7 @@ func addMapDumpTests() {
 	m4t := "map[string]interface {}"
 	m4t1 := "string"
 	m4t2 := "interface {}"
-	m4s := "(len=" + m4Len + ") {\n (" + m4t1 + ") (len=" + k4Len + ")" +
+	m4s := "(len: " + m4Len + ") {\n (" + m4t1 + ") (len: " + k4Len + ")" +
 		" \"nil\": (" + m4t2 + ") <nil>\n}"
 	addDumpTest(m4, "("+m4t+") "+m4s+"\n")
 	addDumpTest(pm4, "(*"+m4t+")("+m4Addr+")("+m4s+")\n")
@@ -703,14 +707,14 @@ func addStructDumpTests() {
 	pv3Addr := fmt.Sprintf("%p", &pv3)
 	v3t := "spew_test.s3"
 	v3t2 := "spew_test.pstringer"
-	v3s := "{\n s: (" + v3t2 + ") (len=4) stringer test,\n S: (" + v3t2 +
-		") (len=5) stringer test2\n}"
+	v3s := "{\n s: (" + v3t2 + ") (len: 4) stringer test,\n S: (" + v3t2 +
+		") (len: 5) stringer test2\n}"
 	v3sp := v3s
 	if spew.UnsafeDisabled {
-		v3s = "{\n s: (" + v3t2 + ") (len=4) \"test\",\n S: (" +
-			v3t2 + ") (len=5) \"test2\"\n}"
-		v3sp = "{\n s: (" + v3t2 + ") (len=4) \"test\",\n S: (" +
-			v3t2 + ") (len=5) stringer test2\n}"
+		v3s = "{\n s: (" + v3t2 + ") (len: 4) \"test\",\n S: (" +
+			v3t2 + ") (len: 5) \"test2\"\n}"
+		v3sp = "{\n s: (" + v3t2 + ") (len: 4) \"test\",\n S: (" +
+			v3t2 + ") (len: 5) stringer test2\n}"
 	}
 	addDumpTest(v3, "("+v3t+") "+v3s+"\n")
 	addDumpTest(pv3, "(*"+v3t+")("+v3Addr+")("+v3sp+")\n")
@@ -730,8 +734,8 @@ func addStructDumpTests() {
 	v4t2 := "spew_test.embed"
 	v4t3 := "string"
 	v4s := "{\n embed: (*" + v4t2 + ")(" + eAddr + ")({\n  a: (" + v4t3 +
-		") (len=" + eLen + ") \"embedstr\"\n }),\n e: (*" + v4t2 +
-		")(" + eAddr + ")({\n  a: (" + v4t3 + ") (len=" + eLen + ")" +
+		") (len: " + eLen + ") \"embedstr\"\n }),\n e: (*" + v4t2 +
+		")(" + eAddr + ")({\n  a: (" + v4t3 + ") (len: " + eLen + ")" +
 		" \"embedstr\"\n })\n}"
 	addDumpTest(v4, "("+v4t+") "+v4s+"\n")
 	addDumpTest(pv4, "(*"+v4t+")("+v4Addr+")("+v4s+")\n")
@@ -835,7 +839,7 @@ func addFuncDumpTests() {
 	addDumpTest(nv, "(*"+vt+")(<nil>)\n")
 
 	// Function with param and no returns.
-	v2 := TestDump
+	v2 := func(t *testing.T) {}
 	nv2 := (*func(*testing.T))(nil)
 	pv2 := &v2
 	v2Addr := fmt.Sprintf("%p", pv2)
@@ -956,87 +960,82 @@ func addErrorDumpTests() {
 	addDumpTest(nv, "(*"+vt+")(<nil>)\n")
 }
 
-// TestDump executes all of the tests described by dumpTests.
-func TestDump(t *testing.T) {
-	// Setup tests.
-	addIntDumpTests()
-	addUintDumpTests()
-	addBoolDumpTests()
-	addFloatDumpTests()
-	addComplexDumpTests()
-	addArrayDumpTests()
-	addSliceDumpTests()
-	addStringDumpTests()
-	addInterfaceDumpTests()
-	addMapDumpTests()
-	addStructDumpTests()
-	addUintptrDumpTests()
-	addUnsafePointerDumpTests()
-	addChanDumpTests()
-	addFuncDumpTests()
-	addCircularDumpTests()
-	addPanicDumpTests()
-	addErrorDumpTests()
-	addCgoDumpTests()
+var _ = Describe("Dump Tests", func() {
+	// TestDump executes all of the tests described by dumpTests.
+	DescribeTable(
+		"individual dump tests",
+		func(testFunc func()) {
+			testFunc()
+			buf := new(bytes.Buffer)
+			lo.ForEach(dumpTests, func(test dumpTest, _ int) {
+				spew.Fdump(buf, test.in)
+				s := buf.String()
+				lines := strings.Split(s, "\n")
+				Expect(lo.Every(test.wants, lines))
+			})
+		},
+		Entry("addIntDumpTests()", addIntDumpTests),
+		Entry("addUintDumpTests()", addUintDumpTests),
+		Entry("addBoolDumpTests()", addBoolDumpTests),
+		Entry("addFloatDumpTests()", addFloatDumpTests),
+		Entry("addComplexDumpTests()", addComplexDumpTests),
+		Entry("addArrayDumpTests()", addArrayDumpTests),
+		Entry("addSliceDumpTests()", addSliceDumpTests),
+		Entry("addStringDumpTests()", addStringDumpTests),
+		Entry("addInterfaceDumpTests()", addInterfaceDumpTests),
+		Entry("addMapDumpTests()", addMapDumpTests),
+		Entry("addStructDumpTests()", addStructDumpTests),
+		Entry("addUintptrDumpTests()", addUintptrDumpTests),
+		Entry("addUnsafePointerDumpTests()", addUnsafePointerDumpTests),
+		Entry("addChanDumpTests()", addChanDumpTests),
+		Entry("addFuncDumpTests()", addFuncDumpTests),
+		Entry("addCircularDumpTests()", addCircularDumpTests),
+		Entry("addPanicDumpTests()", addPanicDumpTests),
+		Entry("addErrorDumpTests()", addErrorDumpTests),
+		Entry("addCgoDumpTests()", addCgoDumpTests),
+	)
 
-	t.Logf("Running %d tests", len(dumpTests))
-	for i, test := range dumpTests {
-		buf := new(bytes.Buffer)
-		spew.Fdump(buf, test.in)
-		s := buf.String()
-		if testFailed(s, test.wants) {
-			t.Errorf("Dump #%d\n got: %s %s", i, s, stringizeWants(test.wants))
-			continue
-		}
-	}
-}
-
-func TestDumpSortedKeys(t *testing.T) {
-	cfg := spew.ConfigState{SortKeys: true}
-	s := cfg.Sdump(map[int]string{1: "1", 3: "3", 2: "2"})
-	expected := "(map[int]string) (len=3) {\n(int) 1: (string) (len=1) " +
-		"\"1\",\n(int) 2: (string) (len=1) \"2\",\n(int) 3: (string) " +
-		"(len=1) \"3\"\n" +
-		"}\n"
-	if s != expected {
-		t.Errorf("Sorted keys mismatch:\n  %v %v", s, expected)
-	}
-
-	s = cfg.Sdump(map[stringer]int{"1": 1, "3": 3, "2": 2})
-	expected = "(map[spew_test.stringer]int) (len=3) {\n" +
-		"(spew_test.stringer) (len=1) stringer 1: (int) 1,\n" +
-		"(spew_test.stringer) (len=1) stringer 2: (int) 2,\n" +
-		"(spew_test.stringer) (len=1) stringer 3: (int) 3\n" +
-		"}\n"
-	if s != expected {
-		t.Errorf("Sorted keys mismatch:\n  %v %v", s, expected)
-	}
-
-	s = cfg.Sdump(map[pstringer]int{pstringer("1"): 1, pstringer("3"): 3, pstringer("2"): 2})
-	expected = "(map[spew_test.pstringer]int) (len=3) {\n" +
-		"(spew_test.pstringer) (len=1) stringer 1: (int) 1,\n" +
-		"(spew_test.pstringer) (len=1) stringer 2: (int) 2,\n" +
-		"(spew_test.pstringer) (len=1) stringer 3: (int) 3\n" +
-		"}\n"
-	if spew.UnsafeDisabled {
-		expected = "(map[spew_test.pstringer]int) (len=3) {\n" +
-			"(spew_test.pstringer) (len=1) \"1\": (int) 1,\n" +
-			"(spew_test.pstringer) (len=1) \"2\": (int) 2,\n" +
-			"(spew_test.pstringer) (len=1) \"3\": (int) 3\n" +
+	It("tests dump with sorted keys", func() {
+		cfg := spew.ConfigState{SortKeys: true}
+		s := cfg.Sdump(map[int]string{1: "1", 3: "3", 2: "2"})
+		expected := "(map[int]string) (len: 3) {\n(int) 1: (string) (len: 1) " +
+			"\"1\",\n(int) 2: (string) (len: 1) \"2\",\n(int) 3: (string) " +
+			"(len: 1) \"3\"\n" +
 			"}\n"
-	}
-	if s != expected {
-		t.Errorf("Sorted keys mismatch:\n  %v %v", s, expected)
-	}
 
-	s = cfg.Sdump(map[customError]int{customError(1): 1, customError(3): 3, customError(2): 2})
-	expected = "(map[spew_test.customError]int) (len=3) {\n" +
-		"(spew_test.customError) error: 1: (int) 1,\n" +
-		"(spew_test.customError) error: 2: (int) 2,\n" +
-		"(spew_test.customError) error: 3: (int) 3\n" +
-		"}\n"
-	if s != expected {
-		t.Errorf("Sorted keys mismatch:\n  %v %v", s, expected)
-	}
+		Expect(s).To(Equal(expected))
 
-}
+		s = cfg.Sdump(map[stringer]int{"1": 1, "3": 3, "2": 2})
+		expected = "(map[spew_test.stringer]int) (len: 3) {\n" +
+			"(spew_test.stringer) (len: 1) stringer 1: (int) 1,\n" +
+			"(spew_test.stringer) (len: 1) stringer 2: (int) 2,\n" +
+			"(spew_test.stringer) (len: 1) stringer 3: (int) 3\n" +
+			"}\n"
+		Expect(s).To(Equal(expected))
+
+		s = cfg.Sdump(map[pstringer]int{pstringer("1"): 1, pstringer("3"): 3, pstringer("2"): 2})
+		expected = "(map[spew_test.pstringer]int) (len: 3) {\n" +
+			"(spew_test.pstringer) (len: 1) stringer 1: (int) 1,\n" +
+			"(spew_test.pstringer) (len: 1) stringer 2: (int) 2,\n" +
+			"(spew_test.pstringer) (len: 1) stringer 3: (int) 3\n" +
+			"}\n"
+		if spew.UnsafeDisabled {
+			expected = "(map[spew_test.pstringer]int) (len: 3) {\n" +
+				"(spew_test.pstringer) (len: 1) \"1\": (int) 1,\n" +
+				"(spew_test.pstringer) (len: 1) \"2\": (int) 2,\n" +
+				"(spew_test.pstringer) (len: 1) \"3\": (int) 3\n" +
+				"}\n"
+		}
+		Expect(s).To(Equal(expected))
+
+		s = cfg.Sdump(map[customError]int{customError(1): 1, customError(3): 3, customError(2): 2})
+		expected = "(map[spew_test.customError]int) (len: 3) {\n" +
+			"(spew_test.customError) error: 1: (int) 1,\n" +
+			"(spew_test.customError) error: 2: (int) 2,\n" +
+			"(spew_test.customError) error: 3: (int) 3\n" +
+			"}\n"
+		Expect(s).To(Equal(expected))
+
+	})
+
+})

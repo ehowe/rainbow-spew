@@ -16,6 +16,7 @@
 // when the code is not running on Google App Engine, compiled by GopherJS, and
 // "-tags safe" is not added to the go build command line.  The "disableunsafe"
 // tag is deprecated and thus should not be used.
+//go:build !js && !appengine && !safe && !disableunsafe && go1.4
 // +build !js,!appengine,!safe,!disableunsafe,go1.4
 
 /*
@@ -29,7 +30,9 @@ package spew
 import (
 	"bytes"
 	"reflect"
-	"testing"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 // changeKind uses unsafe to intentionally change the kind of a reflect.Value to
@@ -46,56 +49,50 @@ func changeKind(v *reflect.Value, readOnly bool) {
 	*flags |= flagKindMask
 }
 
-// TestAddedReflectValue tests functionaly of the dump and formatter code which
-// falls back to the standard fmt library for new types that might get added to
-// the language.
-func TestAddedReflectValue(t *testing.T) {
-	i := 1
+var _ = Describe("Internal Unsafe Tests", func() {
+	// TestAddedReflectValue tests functionaly of the dump and formatter code which
+	// falls back to the standard fmt library for new types that might get added to
+	// the language.
+	It("Tests an added type", func() {
+		i := 1
 
-	// Dump using a reflect.Value that is exported.
-	v := reflect.ValueOf(int8(5))
-	changeKind(&v, false)
-	buf := new(bytes.Buffer)
-	d := dumpState{w: buf, cs: &Config}
-	d.dump(v)
-	s := buf.String()
-	want := "(int8) 5"
-	if s != want {
-		t.Errorf("TestAddedReflectValue #%d\n got: %s want: %s", i, s, want)
-	}
-	i++
+		// Dump using a reflect.Value that is exported.
+		v := reflect.ValueOf(int8(5))
+		changeKind(&v, false)
+		buf := new(bytes.Buffer)
+		d := dumpState{w: buf, cs: &Config}
+		d.dump(v)
+		s := buf.String()
+		want := "(int8) 5"
+		Expect(s).To(Equal(want))
+		i++
 
-	// Dump using a reflect.Value that is not exported.
-	changeKind(&v, true)
-	buf.Reset()
-	d.dump(v)
-	s = buf.String()
-	want = "(int8) <int8 Value>"
-	if s != want {
-		t.Errorf("TestAddedReflectValue #%d\n got: %s want: %s", i, s, want)
-	}
-	i++
+		// Dump using a reflect.Value that is not exported.
+		changeKind(&v, true)
+		buf.Reset()
+		d.dump(v)
+		s = buf.String()
+		want = "(int8) <int8 Value>"
+		Expect(s).To(Equal(want))
+		i++
 
-	// Formatter using a reflect.Value that is exported.
-	changeKind(&v, false)
-	buf2 := new(dummyFmtState)
-	f := formatState{value: v, cs: &Config, fs: buf2}
-	f.format(v)
-	s = buf2.String()
-	want = "5"
-	if s != want {
-		t.Errorf("TestAddedReflectValue #%d got: %s want: %s", i, s, want)
-	}
-	i++
+		// Formatter using a reflect.Value that is exported.
+		changeKind(&v, false)
+		buf2 := new(dummyFmtState)
+		f := formatState{value: v, cs: &Config, fs: buf2}
+		f.format(v)
+		s = buf2.String()
+		want = "5"
+		Expect(s).To(Equal(want))
+		i++
 
-	// Formatter using a reflect.Value that is not exported.
-	changeKind(&v, true)
-	buf2.Reset()
-	f = formatState{value: v, cs: &Config, fs: buf2}
-	f.format(v)
-	s = buf2.String()
-	want = "<int8 Value>"
-	if s != want {
-		t.Errorf("TestAddedReflectValue #%d got: %s want: %s", i, s, want)
-	}
-}
+		// Formatter using a reflect.Value that is not exported.
+		changeKind(&v, true)
+		buf2.Reset()
+		f = formatState{value: v, cs: &Config, fs: buf2}
+		f.format(v)
+		s = buf2.String()
+		want = "<int8 Value>"
+		Expect(s).To(Equal(want))
+	})
+})

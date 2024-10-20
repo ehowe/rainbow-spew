@@ -244,8 +244,11 @@ func (f *formatState) format(v reflect.Value) {
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 		printNumber(f.fs, f.cs, v.Uint())
 
-	case reflect.Float32, reflect.Float64:
-		printNumber(f.fs, f.cs, v.Float())
+	case reflect.Float32:
+		printFloat(f.fs, f.cs, v.Float(), 32)
+
+	case reflect.Float64:
+		printFloat(f.fs, f.cs, v.Float(), 64)
 
 	case reflect.Complex64, reflect.Complex128:
 		printNumber(f.fs, f.cs, v.Complex())

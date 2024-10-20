@@ -69,10 +69,14 @@ package spew_test
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 	"unsafe"
 
-	"github.com/ehowe/rainbow-spew"
+	spew "github.com/ehowe/rainbow-spew"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/samber/lo"
 )
 
 // formatterTest is used to describe a test to be performed against NewFormatter.
@@ -1203,7 +1207,7 @@ func addFuncFormatterTests() {
 	addFormatterTest("%#+v", nv, "(*"+vt+")"+"<nil>")
 
 	// Function with param and no returns.
-	v2 := TestFormatter
+	v2 := func(p *testing.T) {}
 	nv2 := (*func(*testing.T))(nil)
 	pv2 := &v2
 	v2Addr := fmt.Sprintf("%p", pv2)
@@ -1461,42 +1465,6 @@ func addPassthroughFormatterTests() {
 	addFormatterTest("%q", "test", "\"test\"")
 }
 
-// TestFormatter executes all of the tests described by formatterTests.
-func TestFormatter(t *testing.T) {
-	// Setup tests.
-	addIntFormatterTests()
-	addUintFormatterTests()
-	addBoolFormatterTests()
-	addFloatFormatterTests()
-	addComplexFormatterTests()
-	addArrayFormatterTests()
-	addSliceFormatterTests()
-	addStringFormatterTests()
-	addInterfaceFormatterTests()
-	addMapFormatterTests()
-	addStructFormatterTests()
-	addUintptrFormatterTests()
-	addUnsafePointerFormatterTests()
-	addChanFormatterTests()
-	addFuncFormatterTests()
-	addCircularFormatterTests()
-	addPanicFormatterTests()
-	addErrorFormatterTests()
-	addPassthroughFormatterTests()
-
-	t.Logf("Running %d tests", len(formatterTests))
-	for i, test := range formatterTests {
-		buf := new(bytes.Buffer)
-		spew.Fprintf(buf, test.format, test.in)
-		s := buf.String()
-		if testFailed(s, test.wants) {
-			t.Errorf("Formatter #%d format: %s got: %s %s", i, test.format, s,
-				stringizeWants(test.wants))
-			continue
-		}
-	}
-}
-
 type testStruct struct {
 	x int
 }
@@ -1513,46 +1481,69 @@ func (ts *testStructP) String() string {
 	return fmt.Sprintf("ts.%d", ts.x)
 }
 
-func TestPrintSortedKeys(t *testing.T) {
-	cfg := spew.ConfigState{SortKeys: true}
-	s := cfg.Sprint(map[int]string{1: "1", 3: "3", 2: "2"})
-	expected := "map[1:1 2:2 3:3]"
-	if s != expected {
-		t.Errorf("Sorted keys mismatch 1:\n  %v %v", s, expected)
-	}
+var _ = Describe("Format Tests", func() {
+	DescribeTable(
+		"individual format tests",
+		func(testFunc func()) {
+			testFunc()
+			buf := new(bytes.Buffer)
+			lo.ForEach(dumpTests, func(test dumpTest, _ int) {
+				spew.Fdump(buf, test.in)
+				s := buf.String()
+				lines := strings.Split(s, "\n")
+				Expect(lo.Every(test.wants, lines))
+			})
+		},
+		Entry("addIntFormatterTests()", addIntFormatterTests),
+		Entry("addUintFormatterTests()", addUintFormatterTests),
+		Entry("addBoolFormatterTests()", addBoolFormatterTests),
+		Entry("addFloatFormatterTests()", addFloatFormatterTests),
+		Entry("addComplexFormatterTests()", addComplexFormatterTests),
+		Entry("addArrayFormatterTests()", addArrayFormatterTests),
+		Entry("addSliceFormatterTests()", addSliceFormatterTests),
+		Entry("addStringFormatterTests()", addStringFormatterTests),
+		Entry("addInterfaceFormatterTests()", addInterfaceFormatterTests),
+		Entry("addMapFormatterTests()", addMapFormatterTests),
+		Entry("addStructFormatterTests()", addStructFormatterTests),
+		Entry("addUintptrFormatterTests()", addUintptrFormatterTests),
+		Entry("addUnsafePointerFormatterTests()", addUnsafePointerFormatterTests),
+		Entry("addChanFormatterTests()", addChanFormatterTests),
+		Entry("addFuncFormatterTests()", addFuncFormatterTests),
+		Entry("addCircularFormatterTests()", addCircularFormatterTests),
+		Entry("addPanicFormatterTests()", addPanicFormatterTests),
+		Entry("addErrorFormatterTests()", addErrorFormatterTests),
+		Entry("addPassthroughFormatterTests()", addPassthroughFormatterTests),
+	)
 
-	s = cfg.Sprint(map[stringer]int{"1": 1, "3": 3, "2": 2})
-	expected = "map[stringer 1:1 stringer 2:2 stringer 3:3]"
-	if s != expected {
-		t.Errorf("Sorted keys mismatch 2:\n  %v %v", s, expected)
-	}
+	It("prints sorted keys", func() {
+		cfg := spew.ConfigState{SortKeys: true}
+		s := cfg.Sprint(map[int]string{1: "1", 3: "3", 2: "2"})
+		expected := "map[1:1 2:2 3:3]"
+		Expect(s).To(Equal(expected))
 
-	s = cfg.Sprint(map[pstringer]int{pstringer("1"): 1, pstringer("3"): 3, pstringer("2"): 2})
-	expected = "map[stringer 1:1 stringer 2:2 stringer 3:3]"
-	if spew.UnsafeDisabled {
-		expected = "map[1:1 2:2 3:3]"
-	}
-	if s != expected {
-		t.Errorf("Sorted keys mismatch 3:\n  %v %v", s, expected)
-	}
+		s = cfg.Sprint(map[stringer]int{"1": 1, "3": 3, "2": 2})
+		expected = "map[stringer 1:1 stringer 2:2 stringer 3:3]"
+		Expect(s).To(Equal(expected))
 
-	s = cfg.Sprint(map[testStruct]int{{1}: 1, {3}: 3, {2}: 2})
-	expected = "map[ts.1:1 ts.2:2 ts.3:3]"
-	if s != expected {
-		t.Errorf("Sorted keys mismatch 4:\n  %v %v", s, expected)
-	}
-
-	if !spew.UnsafeDisabled {
-		s = cfg.Sprint(map[testStructP]int{{1}: 1, {3}: 3, {2}: 2})
-		expected = "map[ts.1:1 ts.2:2 ts.3:3]"
-		if s != expected {
-			t.Errorf("Sorted keys mismatch 5:\n  %v %v", s, expected)
+		s = cfg.Sprint(map[pstringer]int{pstringer("1"): 1, pstringer("3"): 3, pstringer("2"): 2})
+		expected = "map[stringer 1:1 stringer 2:2 stringer 3:3]"
+		if spew.UnsafeDisabled {
+			expected = "map[1:1 2:2 3:3]"
 		}
-	}
+		Expect(s).To(Equal(expected))
 
-	s = cfg.Sprint(map[customError]int{customError(1): 1, customError(3): 3, customError(2): 2})
-	expected = "map[error: 1:1 error: 2:2 error: 3:3]"
-	if s != expected {
-		t.Errorf("Sorted keys mismatch 6:\n  %v %v", s, expected)
-	}
-}
+		s = cfg.Sprint(map[testStruct]int{{1}: 1, {3}: 3, {2}: 2})
+		expected = "map[ts.1:1 ts.2:2 ts.3:3]"
+		Expect(s).To(Equal(expected))
+
+		if !spew.UnsafeDisabled {
+			s = cfg.Sprint(map[testStructP]int{{1}: 1, {3}: 3, {2}: 2})
+			expected = "map[ts.1:1 ts.2:2 ts.3:3]"
+			Expect(s).To(Equal(expected))
+		}
+
+		s = cfg.Sprint(map[customError]int{customError(1): 1, customError(3): 3, customError(2): 2})
+		expected = "map[error: 1:1 error: 2:2 error: 3:3]"
+		Expect(s).To(Equal(expected))
+	})
+})

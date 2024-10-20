@@ -79,8 +79,12 @@ func (d *dumpState) unpackValue(v reflect.Value) reflect.Value {
 	return v
 }
 
+type float interface {
+	float32 | float64
+}
+
 type number interface {
-	int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | float32 | float64 | complex64 | complex128
+	int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | complex64 | complex128
 }
 
 // dumpPtr handles formatting of pointers by indirecting them as necessary.
@@ -298,6 +302,7 @@ func (d *dumpState) dump(v reflect.Value) {
 				if valueLen != 0 {
 					d.w.Write(spaceBytes)
 				}
+				withColor(d.w, capEqualsBytes, d.cs.Color.Length...)
 				printNumber(d.w, d.cs, valueCap)
 			}
 		})
@@ -328,8 +333,11 @@ func (d *dumpState) dump(v reflect.Value) {
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 		printNumber(d.w, d.cs, v.Uint())
 
-	case reflect.Float32, reflect.Float64:
-		printNumber(d.w, d.cs, v.Float())
+	case reflect.Float32:
+		printFloat(d.w, d.cs, v.Float(), 32)
+
+	case reflect.Float64:
+		printFloat(d.w, d.cs, v.Float(), 64)
 
 	case reflect.Complex64, reflect.Complex128:
 		printNumber(d.w, d.cs, v.Complex())
@@ -473,8 +481,16 @@ func withParens(d *dumpState, contentFunc func(d *dumpState)) {
 }
 
 func withColor(writer io.Writer, content []byte, colors ...color.Attribute) {
-	fn := color.New(colors...).SprintfFunc()
-	writer.Write([]byte(fn(string(content))))
+	if len(colors) > 0 {
+		fn := color.New(colors...).SprintfFunc()
+		writer.Write([]byte(fn(string(content))))
+	} else {
+		writer.Write(content)
+	}
+}
+
+func printFloat(writer io.Writer, cs *ConfigState, num float64, precision int) {
+	withColor(writer, []byte(strconv.FormatFloat(num, 'g', -1, precision)))
 }
 
 func printNumber[T number](writer io.Writer, cs *ConfigState, num T) {

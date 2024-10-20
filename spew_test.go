@@ -19,11 +19,11 @@ package spew_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"testing"
 
 	spew "github.com/ehowe/rainbow-spew"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 // spewFunc is used to identify which public function of the spew package or
@@ -96,6 +96,17 @@ type spewTest struct {
 	want   string
 }
 
+type ptrTester struct {
+	s *struct{}
+}
+
+type depthTester struct {
+	ic    indirCir1
+	arr   [1]string
+	slice []string
+	m     map[string]int
+}
+
 // spewTests houses the tests to be performed against the public functions of
 // the spew package and ConfigState.
 //
@@ -107,7 +118,7 @@ var spewTests []spewTest
 // redirStdout is a helper function to return the standard output from f as a
 // byte slice.
 func redirStdout(f func()) ([]byte, error) {
-	tempFile, err := ioutil.TempFile("", "ss-test")
+	tempFile, err := os.CreateTemp("", "ss-test")
 	if err != nil {
 		return nil, err
 	}
@@ -120,201 +131,173 @@ func redirStdout(f func()) ([]byte, error) {
 	os.Stdout = origStdout
 	tempFile.Close()
 
-	return ioutil.ReadFile(fileName)
+	return os.ReadFile(fileName)
 }
 
-func initSpewTests() {
-	// Config states with various settings.
-	scsDefault := spew.NewTestConfig()
-	scsNoMethods := &spew.ConfigState{Indent: " ", DisableMethods: true}
-	scsNoPmethods := &spew.ConfigState{Indent: " ", DisablePointerMethods: true}
-	scsMaxDepth := &spew.ConfigState{Indent: " ", MaxDepth: 1}
-	scsContinue := &spew.ConfigState{Indent: " ", ContinueOnMethod: true}
-	scsNoPtrAddr := &spew.ConfigState{DisablePointerAddresses: true}
-	scsNoCap := &spew.ConfigState{DisableCapacities: true}
+var _ = Describe("Spew Tests", func() {
+	var scsDefault *spew.ConfigState
+	var scsNoMethods *spew.ConfigState
+	var scsNoPmethods *spew.ConfigState
+	var scsMaxDepth *spew.ConfigState
+	var scsContinue *spew.ConfigState
+	var scsNoPtrAddr *spew.ConfigState
+	var scsNoCap *spew.ConfigState
 
-	// Variables for tests on types which implement Stringer interface with and
-	// without a pointer receiver.
-	ts := stringer("test")
-	tps := pstringer("test")
+	var ts stringer
+	var tps pstringer
+	var tptr *ptrTester
+	var dt depthTester
+	var te customError
 
-	type ptrTester struct {
-		s *struct{}
-	}
-	tptr := &ptrTester{s: &struct{}{}}
+	BeforeEach(func() {
+		scsDefault = spew.NewTestConfig()
+		scsNoMethods = &spew.ConfigState{Indent: " ", DisableMethods: true}
+		scsNoPmethods = &spew.ConfigState{Indent: " ", DisablePointerMethods: true}
+		scsMaxDepth = &spew.ConfigState{Indent: " ", MaxDepth: 1}
+		scsContinue = &spew.ConfigState{Indent: " ", ContinueOnMethod: true}
+		scsNoPtrAddr = &spew.ConfigState{DisablePointerAddresses: true}
+		scsNoCap = &spew.ConfigState{DisableCapacities: true}
 
-	// depthTester is used to test max depth handling for structs, array, slices
-	// and maps.
-	type depthTester struct {
-		ic    indirCir1
-		arr   [1]string
-		slice []string
-		m     map[string]int
-	}
-	dt := depthTester{indirCir1{nil}, [1]string{"arr"}, []string{"slice"},
-		map[string]int{"one": 1}}
+		ts = stringer("test")
+		tps = pstringer("test")
+		tptr = &ptrTester{s: &struct{}{}}
+		dt = depthTester{indirCir1{nil}, [1]string{"arr"}, []string{"slice"}, map[string]int{"one": 1}}
+		te = customError(10)
+	})
 
-	// Variable for tests on types which implement error interface.
-	te := customError(10)
+	DescribeTable(
+		"all of the spew tests",
+		func(scsFn func() *spew.ConfigState, spewFunc spewFunc, format string, inFunc func() interface{}, want string) {
+			config := scsFn()
+			in := inFunc()
+			buf := new(bytes.Buffer)
 
-	spewTests = []spewTest{
-		{scsDefault, fCSFdump, "", int8(127), "(int8) 127\n"},
-		{scsDefault, fCSFprint, "", int16(32767), "32767"},
-		{scsDefault, fCSFprintf, "%v", int32(2147483647), "2147483647"},
-		{scsDefault, fCSFprintln, "", int(2147483647), "2147483647\n"},
-		{scsDefault, fCSPrint, "", int64(9223372036854775807), "9223372036854775807"},
-		{scsDefault, fCSPrintln, "", uint8(255), "255\n"},
-		{scsDefault, fCSSdump, "", uint8(64), "(uint8) 64\n"},
-		{scsDefault, fCSSprint, "", complex(1, 2), "(1+2i)"},
-		{scsDefault, fCSSprintf, "%v", complex(float32(3), 4), "(3+4i)"},
-		{scsDefault, fCSSprintln, "", complex(float64(5), 6), "(5+6i)\n"},
-		{scsDefault, fCSErrorf, "%#v", uint16(65535), "(uint16)65535"},
-		{scsDefault, fCSNewFormatter, "%v", uint32(4294967295), "4294967295"},
-		{scsDefault, fErrorf, "%v", uint64(18446744073709551615), "18446744073709551615"},
-		{scsDefault, fFprint, "", float32(3.14), "3.14"},
-		{scsDefault, fFprintln, "", float64(6.28), "6.28\n"},
-		{scsDefault, fPrint, "", true, "true"},
-		{scsDefault, fPrintln, "", false, "false\n"},
-		{scsDefault, fSdump, "", complex(-10, -20), "(complex128) (-10-20i)\n"},
-		{scsDefault, fSprint, "", complex(-1, -2), "(-1-2i)"},
-		{scsDefault, fSprintf, "%v", complex(float32(-3), -4), "(-3-4i)"},
-		{scsDefault, fSprintln, "", complex(float64(-5), -6), "(-5-6i)\n"},
-		{scsNoMethods, fCSFprint, "", ts, "test"},
-		{scsNoMethods, fCSFprint, "", &ts, "<*>test"},
-		{scsNoMethods, fCSFprint, "", tps, "test"},
-		{scsNoMethods, fCSFprint, "", &tps, "<*>test"},
-		{scsNoPmethods, fCSFprint, "", ts, "stringer test"},
-		{scsNoPmethods, fCSFprint, "", &ts, "<*>stringer test"},
-		{scsNoPmethods, fCSFprint, "", tps, "test"},
-		{scsNoPmethods, fCSFprint, "", &tps, "<*>stringer test"},
-		{scsMaxDepth, fCSFprint, "", dt, "{{<max>} [<max>] [<max>] map[<max>]}"},
-		{scsMaxDepth, fCSFdump, "", dt, "(spew_test.depthTester) {\n" +
-			" ic: (spew_test.indirCir1) {\n  <max depth reached>\n },\n" +
-			" arr: ([1]string) (len=1 cap=1) {\n  <max depth reached>\n },\n" +
-			" slice: ([]string) (len=1 cap=1) {\n  <max depth reached>\n },\n" +
-			" m: (map[string]int) (len=1) {\n  <max depth reached>\n }\n}\n"},
-		{scsContinue, fCSFprint, "", ts, "(stringer test) test"},
-		{scsContinue, fCSFdump, "", ts, "(spew_test.stringer) " +
-			"(len=4) (stringer test) \"test\"\n"},
-		{scsContinue, fCSFprint, "", te, "(error: 10) 10"},
-		{scsContinue, fCSFdump, "", te, "(spew_test.customError) " +
-			"(error: 10) 10\n"},
-		{scsNoPtrAddr, fCSFprint, "", tptr, "<*>{<*>{}}"},
-		{scsNoPtrAddr, fCSSdump, "", tptr, "(*spew_test.ptrTester)({\ns: (*struct {})({\n})\n})\n"},
-		{scsNoCap, fCSSdump, "", make([]string, 0, 10), "([]string) {\n}\n"},
-		{scsNoCap, fCSSdump, "", make([]string, 1, 10), "([]string) (len=1) {\n(string) \"\"\n}\n"},
-	}
-}
+			switch spewFunc {
+			case fCSFdump:
+				config.Fdump(buf, in)
 
-// TestSpew executes all of the tests described by spewTests.
-func TestSpew(t *testing.T) {
-	initSpewTests()
+			case fCSFprint:
+				config.Fprint(buf, in)
 
-	t.Logf("Running %d tests", len(spewTests))
-	for i, test := range spewTests {
-		buf := new(bytes.Buffer)
-		switch test.f {
-		case fCSFdump:
-			test.cs.Fdump(buf, test.in)
+			case fCSFprintf:
+				config.Fprintf(buf, format, in)
 
-		case fCSFprint:
-			test.cs.Fprint(buf, test.in)
+			case fCSFprintln:
+				config.Fprintln(buf, in)
 
-		case fCSFprintf:
-			test.cs.Fprintf(buf, test.format, test.in)
+			case fCSPrint:
+				b, err := redirStdout(func() { config.Print(in) })
+				Expect(err).To(BeNil())
+				buf.Write(b)
 
-		case fCSFprintln:
-			test.cs.Fprintln(buf, test.in)
+			case fCSPrintln:
+				b, err := redirStdout(func() { config.Println(in) })
+				Expect(err).To(BeNil())
+				buf.Write(b)
 
-		case fCSPrint:
-			b, err := redirStdout(func() { test.cs.Print(test.in) })
-			if err != nil {
-				t.Errorf("%v #%d %v", test.f, i, err)
-				continue
+			case fCSSdump:
+				str := config.Sdump(in)
+				buf.WriteString(str)
+
+			case fCSSprint:
+				str := config.Sprint(in)
+				buf.WriteString(str)
+
+			case fCSSprintf:
+				str := config.Sprintf(format, in)
+				buf.WriteString(str)
+
+			case fCSSprintln:
+				str := config.Sprintln(in)
+				buf.WriteString(str)
+
+			case fCSErrorf:
+				err := config.Errorf(format, in)
+				buf.WriteString(err.Error())
+
+			case fCSNewFormatter:
+				fmt.Fprintf(buf, format, config.NewFormatter(in))
+
+			case fErrorf:
+				err := spew.Errorf(format, in)
+				buf.WriteString(err.Error())
+
+			case fFprint:
+				spew.Fprint(buf, in)
+
+			case fFprintln:
+				spew.Fprintln(buf, in)
+
+			case fPrint:
+				b, err := redirStdout(func() { spew.Print(in) })
+				Expect(err).To(BeNil())
+				buf.Write(b)
+
+			case fPrintln:
+				b, err := redirStdout(func() { spew.Println(in) })
+				Expect(err).To(BeNil())
+				buf.Write(b)
+
+			case fSdump:
+				str := spew.Sdump(in)
+				buf.WriteString(str)
+
+			case fSprint:
+				str := spew.Sprint(in)
+				buf.WriteString(str)
+
+			case fSprintf:
+				str := spew.Sprintf(format, in)
+				buf.WriteString(str)
+
+			case fSprintln:
+				str := spew.Sprintln(in)
+				buf.WriteString(str)
+
+			default:
+				Fail(fmt.Sprintf("%v unrecognized function", spewFunc))
 			}
-			buf.Write(b)
-
-		case fCSPrintln:
-			b, err := redirStdout(func() { test.cs.Println(test.in) })
-			if err != nil {
-				t.Errorf("%v #%d %v", test.f, i, err)
-				continue
-			}
-			buf.Write(b)
-
-		case fCSSdump:
-			str := test.cs.Sdump(test.in)
-			buf.WriteString(str)
-
-		case fCSSprint:
-			str := test.cs.Sprint(test.in)
-			buf.WriteString(str)
-
-		case fCSSprintf:
-			str := test.cs.Sprintf(test.format, test.in)
-			buf.WriteString(str)
-
-		case fCSSprintln:
-			str := test.cs.Sprintln(test.in)
-			buf.WriteString(str)
-
-		case fCSErrorf:
-			err := test.cs.Errorf(test.format, test.in)
-			buf.WriteString(err.Error())
-
-		case fCSNewFormatter:
-			fmt.Fprintf(buf, test.format, test.cs.NewFormatter(test.in))
-
-		case fErrorf:
-			err := spew.Errorf(test.format, test.in)
-			buf.WriteString(err.Error())
-
-		case fFprint:
-			spew.Fprint(buf, test.in)
-
-		case fFprintln:
-			spew.Fprintln(buf, test.in)
-
-		case fPrint:
-			b, err := redirStdout(func() { spew.Print(test.in) })
-			if err != nil {
-				t.Errorf("%v #%d %v", test.f, i, err)
-				continue
-			}
-			buf.Write(b)
-
-		case fPrintln:
-			b, err := redirStdout(func() { spew.Println(test.in) })
-			if err != nil {
-				t.Errorf("%v #%d %v", test.f, i, err)
-				continue
-			}
-			buf.Write(b)
-
-		case fSdump:
-			str := spew.Sdump(test.in)
-			buf.WriteString(str)
-
-		case fSprint:
-			str := spew.Sprint(test.in)
-			buf.WriteString(str)
-
-		case fSprintf:
-			str := spew.Sprintf(test.format, test.in)
-			buf.WriteString(str)
-
-		case fSprintln:
-			str := spew.Sprintln(test.in)
-			buf.WriteString(str)
-
-		default:
-			t.Errorf("%v #%d unrecognized function", test.f, i)
-			continue
-		}
-		s := buf.String()
-		if test.want != s {
-			t.Errorf("ConfigState #%d\n got: %s want: %s", i, s, test.want)
-			continue
-		}
-	}
-}
+			s := buf.String()
+			Expect(s).To(Equal(want))
+		},
+		Entry("Entry 1", func() *spew.ConfigState { return scsDefault }, fCSFdump, "", func() interface{} { return int8(127) }, "(int8) 127\n"),
+		Entry("Entry 2", func() *spew.ConfigState { return scsDefault }, fCSFprint, "", func() interface{} { return int16(32767) }, "32767"),
+		Entry("Entry 3", func() *spew.ConfigState { return scsDefault }, fCSFprintf, "%v", func() interface{} { return int32(2147483647) }, "2147483647"),
+		Entry("Entry 4", func() *spew.ConfigState { return scsDefault }, fCSFprintln, "", func() interface{} { return int(2147483647) }, "2147483647\n"),
+		Entry("Entry 5", func() *spew.ConfigState { return scsDefault }, fCSPrint, "", func() interface{} { return int64(9223372036854775807) }, "9223372036854775807"),
+		Entry("Entry 6", func() *spew.ConfigState { return scsDefault }, fCSPrintln, "", func() interface{} { return uint8(255) }, "255\n"),
+		Entry("Entry 7", func() *spew.ConfigState { return scsDefault }, fCSSdump, "", func() interface{} { return uint8(64) }, "(uint8) 64\n"),
+		Entry("Entry 8", func() *spew.ConfigState { return scsDefault }, fCSSprint, "", func() interface{} { return complex(1, 2) }, "(1+2i)"),
+		Entry("Entry 9", func() *spew.ConfigState { return scsDefault }, fCSSprintf, "%v", func() interface{} { return complex(float32(3), 4) }, "(3+4i)"),
+		Entry("Entry 10", func() *spew.ConfigState { return scsDefault }, fCSSprintln, "", func() interface{} { return complex(float64(5), 6) }, "(5+6i)\n"),
+		Entry("Entry 11", func() *spew.ConfigState { return scsDefault }, fCSErrorf, "%#v", func() interface{} { return uint16(65535) }, "(uint16)65535"),
+		Entry("Entry 12", func() *spew.ConfigState { return scsDefault }, fCSNewFormatter, "%v", func() interface{} { return uint32(4294967295) }, "4294967295"),
+		Entry("Entry 13", func() *spew.ConfigState { return scsDefault }, fErrorf, "%v", func() interface{} { return uint64(18446744073709551615) }, "18446744073709551615"),
+		Entry("Entry 14", func() *spew.ConfigState { return scsDefault }, fFprint, "", func() interface{} { return float32(3.14) }, "3.14"),
+		Entry("Entry 15", func() *spew.ConfigState { return scsDefault }, fFprintln, "", func() interface{} { return float64(6.28) }, "6.28\n"),
+		Entry("Entry 16", func() *spew.ConfigState { return scsDefault }, fPrint, "", func() interface{} { return true }, "true"),
+		Entry("Entry 17", func() *spew.ConfigState { return scsDefault }, fPrintln, "", func() interface{} { return false }, "false\n"),
+		Entry("Entry 18", func() *spew.ConfigState { return scsDefault }, fSdump, "", func() interface{} { return complex(-10, -20) }, "(complex128) (-10-20i)\n"),
+		Entry("Entry 19", func() *spew.ConfigState { return scsDefault }, fSprint, "", func() interface{} { return complex(-1, -2) }, "(-1-2i)"),
+		Entry("Entry 20", func() *spew.ConfigState { return scsDefault }, fSprintf, "%v", func() interface{} { return complex(float32(-3), -4) }, "(-3-4i)"),
+		Entry("Entry 21", func() *spew.ConfigState { return scsDefault }, fSprintln, "", func() interface{} { return complex(float64(-5), -6) }, "(-5-6i)\n"),
+		Entry("Entry 22", func() *spew.ConfigState { return scsNoMethods }, fCSFprint, "", func() interface{} { return ts }, "test"),
+		Entry("Entry 23", func() *spew.ConfigState { return scsNoMethods }, fCSFprint, "", func() interface{} { return &ts }, "<*>test"),
+		Entry("Entry 24", func() *spew.ConfigState { return scsNoMethods }, fCSFprint, "", func() interface{} { return tps }, "test"),
+		Entry("Entry 25", func() *spew.ConfigState { return scsNoMethods }, fCSFprint, "", func() interface{} { return &tps }, "<*>test"),
+		Entry("Entry 26", func() *spew.ConfigState { return scsNoPmethods }, fCSFprint, "", func() interface{} { return ts }, "stringer test"),
+		Entry("Entry 27", func() *spew.ConfigState { return scsNoPmethods }, fCSFprint, "", func() interface{} { return &ts }, "<*>stringer test"),
+		Entry("Entry 28", func() *spew.ConfigState { return scsNoPmethods }, fCSFprint, "", func() interface{} { return tps }, "test"),
+		Entry("Entry 29", func() *spew.ConfigState { return scsNoPmethods }, fCSFprint, "", func() interface{} { return &tps }, "<*>stringer test"),
+		Entry("Entry 30", func() *spew.ConfigState { return scsMaxDepth }, fCSFprint, "", func() interface{} { return dt }, "{{<max>} [<max>] [<max>] map[<max>]}"),
+		Entry("Entry 31", func() *spew.ConfigState { return scsMaxDepth }, fCSFdump, "", func() interface{} { return dt }, "(spew_test.depthTester) {\n ic: (spew_test.indirCir1) {\n  <max depth reached>\n },\n arr: ([1]string) (len: 1 cap: 1) {\n  <max depth reached>\n },\n slice: ([]string) (len: 1 cap: 1) {\n  <max depth reached>\n },\n m: (map[string]int) (len: 1) {\n  <max depth reached>\n }\n}\n"),
+		Entry("Entry 32", func() *spew.ConfigState { return scsContinue }, fCSFprint, "", func() interface{} { return ts }, "(stringer test) test"),
+		Entry("Entry 33", func() *spew.ConfigState { return scsContinue }, fCSFdump, "", func() interface{} { return ts }, "(spew_test.stringer) (len: 4) (stringer test) \"test\"\n"),
+		Entry("Entry 34", func() *spew.ConfigState { return scsContinue }, fCSFprint, "", func() interface{} { return te }, "(error: 10) 10"),
+		Entry("Entry 35", func() *spew.ConfigState { return scsContinue }, fCSFdump, "", func() interface{} { return te }, "(spew_test.customError) (error: 10) 10\n"),
+		Entry("Entry 36", func() *spew.ConfigState { return scsNoPtrAddr }, fCSFprint, "", func() interface{} { return tptr }, "<*>{<*>{}}"),
+		Entry("Entry 37", func() *spew.ConfigState { return scsNoPtrAddr }, fCSSdump, "", func() interface{} { return tptr }, "(*spew_test.ptrTester)({\ns: (*struct {})({\n})\n})\n"),
+		Entry("Entry 38", func() *spew.ConfigState { return scsNoCap }, fCSSdump, "", func() interface{} { return make([]string, 0, 10) }, "([]string) {\n}\n"),
+		Entry("Entry 39", func() *spew.ConfigState { return scsNoCap }, fCSSdump, "", func() interface{} { return make([]string, 1, 10) }, "([]string) (len: 1) {\n(string) \"\"\n}\n"),
+	)
+})
